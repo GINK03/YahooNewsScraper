@@ -26,7 +26,7 @@ def html_adhoc_fetcher(url):
   html = None
   for t in range(5):
     opener = urllib.request.build_opener()
-    TIME_OUT = 1.0
+    TIME_OUT = 3.0
     try:
       html = opener.open(str(url), timeout = TIME_OUT).read()
     except EOFError as e:
@@ -66,9 +66,9 @@ def html_adhoc_fetcher(url):
   return title, contents_all_text
 
 def _driver(array):
+  time_dirname, link, contexttype = array  
   bucket = conn.get_bucket("irep-ml-scraping")
   key_   = Key(bucket)
-  time_dirname, link, contexttype = array  
   print("link", link)
   filename = link.replace('/', '_')
   if os.path.isfile('%s/%s'%(time_dirname, filename)) is True:
@@ -82,20 +82,36 @@ def _driver(array):
   print("contents all text ", contents_all_text)
   key_.key   = '%s_%s_%s'%(time_dirname, contexttype, filename)
   key_.set_contents_from_string(contents_all_text)
+  return None
 
+def _local_driver(array):
+  time_dirname, link, contexttype = array  
+  filename = link.replace('/', '_')
+  if os.path.isfile('output/%s/%s'%(time_dirname, filename)) is True:
+    return None
+  tp = html_adhoc_fetcher(link)
+  if tp == None:
+    return None
+  title, contents_all_text = tp
+  print("link", link)
+  print(title) 
+  print("contents all text ", contents_all_text)
+  with open('output/%s/%s'%(time_dirname, filename), 'w') as f:
+    f.write(contents_all_text)
   return None
 
 if '-c' in sys.argv:
   while True:
     tdatetime    = dt.now()
     time_dirname = "%s"%( tdatetime.strftime('%Y_%m_%d_%H') )
-    #os.system('mkdir %s'%time_dirname)
-    soup         = bs4.BeautifulSoup(open('./seed').read())
+    os.system('mkdir -p output/%s'%time_dirname)
+    soup         = bs4.BeautifulSoup(open('config/seed').read())
     xmls         = list(filter(lambda x:'.xml' in x, [a['href'] for a in soup.findAll('a', href=True)]) )
     tus          = list(map(lambda x:(x.split('/')[-2], x), xmls))
     urls_contexttype = []
     for tu in tus:
       print(tu)
+      os.system('rm tmp/*')
       os.system('wget -O "tmp/%s_%s.html" %s'%(time_dirname, tu[0], tu[1]) )
       tree = ET.parse('tmp/%s_%s.html'%(time_dirname, tu[0]))
       contexttype = "%s_%s"%(time_dirname, tu[0])
@@ -103,9 +119,12 @@ if '-c' in sys.argv:
     random.shuffle(urls_contexttype)
     timedirname_urls_contexttype = [ [time_dirname, url, contexttype] for url, contexttype in urls_contexttype]
     with concurrent.futures.ProcessPoolExecutor(max_workers=16) as executor:
-      executor.map(_driver, timedirname_urls_contexttype)
-    #for array in timedirname_urls:
-    #  _driver(array) 
+      if '-s3' in sys.argv:
+        executor.map(_driver, timedirname_urls_contexttype)
+      else: 
+        executor.map(_local_driver, timedirname_urls_contexttype)
+        #_local_driver(timedirname_urls_contexttype[0])
+
 if '-d' in sys.argv:
   bucket = conn.get_bucket("irep-ml-scraping")
   for key_ in bucket.list():
