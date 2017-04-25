@@ -9,7 +9,6 @@ import ssl
 import multiprocessing as mp
 from socket import error as SocketError
 import bs4
-import plyvel
 from datetime import datetime as dt
 import xml.etree.ElementTree  as ET
 import os.path
