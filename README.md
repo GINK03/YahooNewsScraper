@@ -1,0 +1,2 @@
+# YahooNewsScraper
+YahooNewsをスクレイピングするだけのソフトです。Python3とBS4必須
