@@ -17,10 +17,13 @@ import concurrent.futures
 import boto
 from boto.s3.connection import S3Connection
 from boto.s3.key import Key
-AWS = {x[0]:x[1] for x in [x.split("=") for x in filter(lambda x:x!="", open('{home}/private_configs/aws.irep.pairs'.format(home=os.environ['HOME']), 'r').read().split('\n'))]}
-ACCESS_TOKEN = AWS['ACCESS_TOKEN']
-SECRET_TOKEN = AWS['SECRET_TOKEN']
-conn = S3Connection( ACCESS_TOKEN, SECRET_TOKEN )
+try:
+  AWS = {x[0]:x[1] for x in [x.split("=") for x in filter(lambda x:x!="", open('{home}/private_configs/aws.irep.pairs'.format(home=os.environ['HOME']), 'r').read().split('\n'))]}
+  ACCESS_TOKEN = AWS['ACCESS_TOKEN']
+  SECRET_TOKEN = AWS['SECRET_TOKEN']
+  conn = S3Connection( ACCESS_TOKEN, SECRET_TOKEN )
+except FileNotFoundError as e: 
+  print("AWSの設定がされていないか見つかりません、botoの機能は利用できません")
 
 def html_adhoc_fetcher(url):
   html = None
