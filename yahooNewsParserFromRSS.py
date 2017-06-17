@@ -116,7 +116,11 @@ if '-c' in sys.argv:
       print(tu)
       os.system('rm tmp/*')
       os.system('wget -O "tmp/%s_%s.html" %s'%(time_dirname, tu[0], tu[1]) )
-      tree = ET.parse('tmp/%s_%s.html'%(time_dirname, tu[0]))
+      try:
+        tree = ET.parse('tmp/%s_%s.html'%(time_dirname, tu[0]))
+      except xml.etree.ElementTree.ParseError as e:
+        print(e)
+        continue
       contexttype = "%s_%s"%(time_dirname, tu[0])
       [urls_contexttype.append([url, contexttype]) for url in [e.text for e in tree.getiterator('link')]]
     random.shuffle(urls_contexttype)
