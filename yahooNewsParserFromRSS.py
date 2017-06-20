@@ -17,6 +17,8 @@ import concurrent.futures
 import boto
 from boto.s3.connection import S3Connection
 from boto.s3.key import Key
+import slackweb
+
 try:
   AWS = {x[0]:x[1] for x in [x.split("=") for x in filter(lambda x:x!="", open('{home}/private_configs/aws.irep.pairs'.format(home=os.environ['HOME']), 'r').read().split('\n'))]}
   ACCESS_TOKEN = AWS['ACCESS_TOKEN']
@@ -104,41 +106,52 @@ def _local_driver(array):
     f.write(contents_all_text)
   return None
 
+#COnfig slack 
+slack = slackweb.Slack(url="https://hooks.slack.com/services/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")
 if '-c' in sys.argv:
-
-  while True:
-    tdatetime    = dt.now()
-    time_dirname = "%s"%( tdatetime.strftime('%Y_%m_%d_%H') )
-    os.system('mkdir -p output/%s'%time_dirname)
-    soup         = bs4.BeautifulSoup(open('config/seed').read())
-    xmls         = list(filter(lambda x:'.xml' in x, [a['href'] for a in soup.findAll('a', href=True)]) )
-    tus          = list(map(lambda x:(x.split('/')[-2], x), xmls))
-    urls_contexttype = []
-    for tu in tus:
-      print(tu)     
-      os.system('rm tmp/*')
-      os.system('wget -O "tmp/%s_%s.html" %s'%(time_dirname, tu[0], tu[1]) )
-      try : 
+  slack.notify(text="Yahoo Scraping: starts with 'c' parameters...")
+  try:
+    while True:
+      tdatetime    = dt.now()
+      time_dirname = "%s"%( tdatetime.strftime('%Y_%m_%d_%H') )
+      os.system('mkdir -p output/%s'%time_dirname)
+      soup         = bs4.BeautifulSoup(open('config/seed').read())
+      xmls         = list(filter(lambda x:'.xml' in x, [a['href'] for a in soup.findAll('a', href=True)]) )
+      tus          = list(map(lambda x:(x.split('/')[-2], x), xmls))
+      urls_contexttype = []
+      for tu in tus:
+        print(tu)     
+        os.system('rm tmp/*')
+        os.system('wget -O "tmp/%s_%s.html" %s'%(time_dirname, tu[0], tu[1]) )
+        try : 
           tree = ET.parse('tmp/%s_%s.html'%(time_dirname, tu[0]))
-      except:
+        except:
           with open('output/error.txt', 'a') as f:
               f.write(tu[1]) 
               f.write('\n')
           continue 
-      contexttype = "%s_%s"%(time_dirname, tu[0])
-      [urls_contexttype.append([url, contexttype]) for url in [e.text for e in tree.getiterator('link')]]
-    random.shuffle(urls_contexttype)
-    timedirname_urls_contexttype = [ [time_dirname, url, contexttype] for url, contexttype in urls_contexttype]
+        contexttype = "%s_%s"%(time_dirname, tu[0])
+        [urls_contexttype.append([url, contexttype]) for url in [e.text for e in tree.getiterator('link')]]
+      random.shuffle(urls_contexttype)
+      timedirname_urls_contexttype = [ [time_dirname, url, contexttype] for url, contexttype in urls_contexttype]
     
-    with concurrent.futures.ProcessPoolExecutor(max_workers=16) as executor:
-      if '-s3' in sys.argv:
-        executor.map(_driver, timedirname_urls_contexttype)
-      else: 
-        executor.map(_local_driver, timedirname_urls_contexttype)
+      with concurrent.futures.ProcessPoolExecutor(max_workers=16) as executor:
+        if '-s3' in sys.argv:
+          executor.map(_driver, timedirname_urls_contexttype)
+        else: 
+          executor.map(_local_driver, timedirname_urls_contexttype)
         #_local_driver(timedirname_urls_contexttype[0])
+    slack.notify(text="Yahoo Scraping : finished")
+  except:
+    slack.notify(text="Yahoo Scraping : error happened. System stops ...")
 
 if '-d' in sys.argv:
-  bucket = conn.get_bucket("irep-ml-scraping")
-  for key_ in bucket.list():
-    print(key_.key)
-    print(key_.get_contents_as_string().decode('utf-8'))
+  slack.notify(text = "Yahoo Scraping: Start with 'd' parameters ... ") 
+  try:
+    bucket = conn.get_bucket("irep-ml-scraping")
+    for key_ in bucket.list():
+      print(key_.key)
+      print(key_.get_contents_as_string().decode('utf-8'))
+    slack.notify( text = "Yahoo Scraping : finished " )
+  except:
+    slack.notify(text="Yahoo Scraping : error happened. System stops ...")
