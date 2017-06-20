@@ -88,6 +88,7 @@ def _driver(array):
   return None
 
 def _local_driver(array):
+
   time_dirname, link, contexttype = array  
   filename = link.replace('/', '_')
   if os.path.isfile('output/%s/%s'%(time_dirname, filename)) is True:
@@ -98,12 +99,13 @@ def _local_driver(array):
   title, contents_all_text = tp
   print("link", link)
   print(title) 
-  print("contents all text ", contents_all_text)
+  #print("contents all text ", contents_all_text)
   with open('output/%s/%s'%(time_dirname, filename), 'w') as f:
     f.write(contents_all_text)
   return None
 
 if '-c' in sys.argv:
+
   while True:
     tdatetime    = dt.now()
     time_dirname = "%s"%( tdatetime.strftime('%Y_%m_%d_%H') )
@@ -113,14 +115,21 @@ if '-c' in sys.argv:
     tus          = list(map(lambda x:(x.split('/')[-2], x), xmls))
     urls_contexttype = []
     for tu in tus:
-      print(tu)
+      print(tu)     
       os.system('rm tmp/*')
       os.system('wget -O "tmp/%s_%s.html" %s'%(time_dirname, tu[0], tu[1]) )
-      tree = ET.parse('tmp/%s_%s.html'%(time_dirname, tu[0]))
+      try : 
+          tree = ET.parse('tmp/%s_%s.html'%(time_dirname, tu[0]))
+      except:
+          with open('output/error.txt', 'a') as f:
+              f.write(tu[1]) 
+              f.write('\n')
+          continue 
       contexttype = "%s_%s"%(time_dirname, tu[0])
       [urls_contexttype.append([url, contexttype]) for url in [e.text for e in tree.getiterator('link')]]
     random.shuffle(urls_contexttype)
     timedirname_urls_contexttype = [ [time_dirname, url, contexttype] for url, contexttype in urls_contexttype]
+    
     with concurrent.futures.ProcessPoolExecutor(max_workers=16) as executor:
       if '-s3' in sys.argv:
         executor.map(_driver, timedirname_urls_contexttype)
