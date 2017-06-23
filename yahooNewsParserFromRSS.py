@@ -90,20 +90,22 @@ def _driver(array):
   return None
 
 def _local_driver(array):
-
-  time_dirname, link, contexttype = array  
-  filename = link.replace('/', '_')
-  if os.path.isfile('output/%s/%s'%(time_dirname, filename)) is True:
-    return None
-  tp = html_adhoc_fetcher(link)
-  if tp == None:
-    return None
-  title, contents_all_text = tp
-  print("link", link)
-  print(title) 
-  #print("contents all text ", contents_all_text)
-  with open('output/%s/%s'%(time_dirname, filename), 'w') as f:
-    f.write(contents_all_text)
+  try:
+    time_dirname, link, contexttype = array  
+    filename = link.replace('/', '_')
+    if os.path.isfile('output/%s/%s'%(time_dirname, filename)) is True:
+      return None
+    tp = html_adhoc_fetcher(link)
+    if tp == None:
+      return None
+    title, contents_all_text = tp
+    print("link", link)
+    print(title) 
+    #print("contents all text ", contents_all_text)
+    with open('output/%s/%s'%(time_dirname, filename), 'w') as f:
+      f.write(contents_all_text)
+  except Exception as e:
+    print(e)
   return None
 
 #COnfig slack 
