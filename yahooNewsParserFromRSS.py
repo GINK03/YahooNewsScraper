@@ -11,6 +11,7 @@ from socket import error as SocketError
 import bs4
 from datetime import datetime as dt
 import xml.etree.ElementTree  as ET
+import xml
 import os.path
 import random
 import concurrent.futures
@@ -142,7 +143,6 @@ if '-c' in sys.argv:
           executor.map(_driver, timedirname_urls_contexttype)
         else: 
           executor.map(_local_driver, timedirname_urls_contexttype)
-        #_local_driver(timedirname_urls_contexttype[0])
     slack.notify(text="Yahoo Scraping : finished")
   except:
     slack.notify(text="Yahoo Scraping : error happened. System stops ...")
