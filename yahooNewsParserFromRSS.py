@@ -91,8 +91,10 @@ def _driver(array):
   return None
 
 def _local_driver(array):
+  print( array )
+  time_dirname, link, contexttype, seckey = array  
+  slack = slackweb.Slack(url="https://hooks.slack.com/services/{SECKEY}".format(SECKEY=seckey))
   try:
-    time_dirname, link, contexttype = array  
     filename = link.replace('/', '_')
     if os.path.isfile('output/%s/%s'%(time_dirname, filename)) is True:
       return None
@@ -105,14 +107,22 @@ def _local_driver(array):
     #print("contents all text ", contents_all_text)
     with open('output/%s/%s'%(time_dirname, filename), 'w') as f:
       f.write(contents_all_text)
+    print( "all access is OK", link )
+    return None
   except Exception as e:
+    slack.notify(text="Yahoo Scraping : error happened. Child process occurred a exception .." + str(e) )
     print(e)
-  return None
+    return None
 
 #COnfig slack 
-slack = slackweb.Slack(url="https://hooks.slack.com/services/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")
 if '-c' in sys.argv:
-  slack.notify(text="Yahoo Scraping: starts with 'c' parameters...")
+  SECKEY = open("{HOME}/private_configs/slack-irep-ml-group".format(HOME=os.environ["HOME"]),"r")\
+      .readline()\
+      .split("=")\
+      .pop()\
+      .strip()
+  slack = slackweb.Slack(url="https://hooks.slack.com/services/{SECKEY}".format(SECKEY=SECKEY))
+  #slack.notify(text="Yahoo Scraping: starts with 'c' parameters...")
   try:
     while True:
       tdatetime    = dt.now()
@@ -130,22 +140,29 @@ if '-c' in sys.argv:
           tree = ET.parse('tmp/%s_%s.html'%(time_dirname, tu[0]))
         except:
           with open('output/error.txt', 'a') as f:
-              f.write(tu[1]) 
-              f.write('\n')
+            f.write(tu[1]) 
+            f.write('\n')
           continue 
         contexttype = "%s_%s"%(time_dirname, tu[0])
         [urls_contexttype.append([url, contexttype]) for url in [e.text for e in tree.getiterator('link')]]
       random.shuffle(urls_contexttype)
-      timedirname_urls_contexttype = [ [time_dirname, url, contexttype] for url, contexttype in urls_contexttype]
-    
+      timedirname_urls_contexttype_seckey = [ [time_dirname, url, contexttype, SECKEY] for url, contexttype in urls_contexttype]
+  
+      if '--no-concurrent' in sys.argv:
+        for tucs in timedirname_urls_contexttype_seckey:
+          _local_driver(tucs)
+        sys.exit()
+      
       with concurrent.futures.ProcessPoolExecutor(max_workers=16) as executor:
         if '-s3' in sys.argv:
-          executor.map(_driver, timedirname_urls_contexttype)
+          executor.map(_driver, timedirname_urls_contexttype_seckey)
         else: 
-          executor.map(_local_driver, timedirname_urls_contexttype)
+          executor.map(_local_driver, timedirname_urls_contexttype_seckey)
     slack.notify(text="Yahoo Scraping : finished")
-  except:
+  except Exception as e:
     slack.notify(text="Yahoo Scraping : error happened. System stops ...")
+    print(e)
+    ...
 
 if '-d' in sys.argv:
   slack.notify(text = "Yahoo Scraping: Start with 'd' parameters ... ") 
